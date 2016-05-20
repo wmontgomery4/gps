@@ -34,14 +34,14 @@ SENSOR_DIMS = {
 PR2_GAINS = np.array([3.09, 1.08, 0.393, 0.674, 0.111, 0.152, 0.098])
 
 common = {
-    'conditions': 9,
+    'conditions': 4,
     'experiment_name': 'my_experiment' + '_' + \
             datetime.strftime(datetime.now(), '%m-%d-%y_%H-%M'),
 }
 
 # set up grid of positions
-xs = np.linspace(-0.1, 0.1, 3)
-ys = np.linspace(-0.1, 0.1, 3)
+xs = np.linspace(-0.1, 0.1, 2)
+ys = np.linspace(-0.1, 0.1, 2)
 pos_body_offset = [np.array([x,y,0]) for x in xs for y in ys]
 
 agent = {
