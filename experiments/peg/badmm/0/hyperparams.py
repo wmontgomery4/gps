@@ -28,7 +28,7 @@ algorithm.update({
     'type': AlgorithmBADMM,
     'lg_step_schedule': np.array([1e-4, 1e-3, 1e-2, 1e-2]),
     'policy_dual_rate': 0.1,
-    'init_pol_wt': 0.01,
+    'init_pol_wt': 0.002,
     'ent_reg_schedule': np.array([1e-3, 1e-3, 1e-2, 1e-1]),
     'fixed_lg_step': 3,
 })
