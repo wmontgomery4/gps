@@ -26,6 +26,7 @@ algorithm = default.algorithm.copy()
 algorithm.update({
     'type': AlgorithmMDGPS,
     'sample_on_policy': True,
+    'step_rule': 'classic',
 })
 
 algorithm['policy_opt']['weights_file_prefix'] = EXP_DIR + 'policy'
@@ -35,7 +36,6 @@ config.update({
     'common': common,
     'algorithm': algorithm,
     'verbose_policy_trials': 1,
-    'step_rule': 'classic',
     'random_seed': 0,
 })
 
