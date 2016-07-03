@@ -15,7 +15,7 @@ from gps.algorithm.cost.cost_utils import RAMP_FINAL_ONLY
 from gps.algorithm.dynamics.dynamics_lr_prior import DynamicsLRPrior
 from gps.algorithm.dynamics.dynamics_prior_gmm import DynamicsPriorGMM
 from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
-from gps.algorithm.policy_opt.policy_opt_caffe import PolicyOptCaffe
+from gps.algorithm.policy_opt.policy_opt_tf import PolicyOptTf
 from gps.algorithm.policy.lin_gauss_init import init_lqr
 from gps.algorithm.policy.policy_prior_gmm import PolicyPriorGMM
 from gps.algorithm.policy.policy_prior import PolicyPrior
@@ -23,6 +23,7 @@ from gps.proto.gps_pb2 import JOINT_ANGLES, JOINT_VELOCITIES, \
         END_EFFECTOR_POINTS, END_EFFECTOR_POINT_VELOCITIES, ACTION
 from gps.gui.config import generate_experiment_info
 
+from gps.algorithm.policy_opt.tf_model_example import example_tf_network
 
 SENSOR_DIMS = {
     JOINT_ANGLES: 7,
@@ -133,8 +134,14 @@ algorithm['traj_opt'] = {
 }
 
 algorithm['policy_opt'] = {
-    'type': PolicyOptCaffe,
-    'iterations': 4000,
+     'type': PolicyOptTf,
+     'iterations': 4000,
+     'network_params': {
+         'obs_include': [JOINT_ANGLES, JOINT_VELOCITIES,
+                     END_EFFECTOR_POINTS, END_EFFECTOR_POINT_VELOCITIES],
+         'sensor_dims': SENSOR_DIMS,
+     },
+     'network_model': example_tf_network,
 }
 
 algorithm['policy_prior'] = {
