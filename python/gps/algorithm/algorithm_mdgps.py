@@ -151,6 +151,8 @@ class AlgorithmMDGPS(Algorithm):
         pol_mu, pol_sig = self.policy_opt.prob(obs)[:2]
         pol_info.pol_mu, pol_info.pol_sig = pol_mu, pol_sig
 
+        LOGGER.debug("Linearizing policy for condition %d" % m)
+
         # Compute the linearizations for each sample
         pol_K = np.empty((N, T, dU, dX))
         pol_k = np.empty((N, T, dU))
@@ -165,15 +167,22 @@ class AlgorithmMDGPS(Algorithm):
         pol_info.pol_S = np.mean(pol_sig, axis=0)
 
         # Add empirical covariances
+        errs = np.empty(T)
         for t in range(T):
             emp_cov = np.zeros((dU, dU))
+            err = 0
             for n in range(N):
                 lin_act = pol_K[n, t, :, :].dot(X[n, t, :]) + pol_k[n, t, :]
                 diff = lin_act - pol_mu[n, t, :]
                 D = diff.dot(diff.T)
                 emp_cov += 0.5*(D + D.T)
+                err += np.sum(diff**2)
+            errs[t] = err / N
             pol_info.pol_S[t, :, :] += emp_cov / N
             pol_info.chol_pol_S[t, :, :] = sp.linalg.cholesky(pol_info.pol_S[t, :, :])
+
+        LOGGER.debug("Average policy linearization error: %f" % np.mean(errs))
+
 
 #        # Update policy prior.
 #        if init:
