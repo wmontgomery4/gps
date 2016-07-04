@@ -232,8 +232,8 @@ class PolicyOptTf(PolicyOpt):
             for u in range(self._dU):
                 pol_K[t, u, :] = self.sess.run(self.grads[u], feed_dict=feed_dict)[0]
             if self.policy.scale is not None:
-                pol_K[t, u, :] = pol_K[t, u, :].dot(self.policy.scale)
-            pol_k[t, :] -= pol_K[t, u, :].dot(obs[t])
+                pol_K[t, :, :] = pol_K[t, :, :].dot(self.policy.scale)
+            pol_k[t, :] -= pol_K[t, :, :].dot(obs[t])
 
         return pol_K, pol_k
 

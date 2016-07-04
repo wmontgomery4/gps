@@ -154,6 +154,7 @@ class AlgorithmMDGPS(Algorithm):
         pol_S = np.mean(pol_sig, axis=0)
         chol_pol_S = np.sqrt(pol_S)
 
+        LOGGER.debug("Linearizing policy for condition " + m)
         pol_K = np.empty((N, T, dU, dX))
         pol_k = np.empty((N, T, dU))
         for n in range(N):
