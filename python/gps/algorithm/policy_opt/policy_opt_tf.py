@@ -17,6 +17,7 @@ from gps.algorithm.policy_opt.tf_utils import TfSolver
 
 LOGGER = logging.getLogger(__name__)
 
+from IPython.core.debugger import Tracer; debug_here = Tracer()
 
 class PolicyOptTf(PolicyOpt):
     """ Policy optimization using tensor flow for DAG computations/nonlinear function approximation. """
@@ -70,6 +71,10 @@ class PolicyOptTf(PolicyOpt):
         self.precision_tensor = tf_map.get_precision_tensor()
         self.act_op = tf_map.get_output_op()
         self.loss_scalar = tf_map.get_loss_op()
+
+        # Setup the gradients
+        self.grads = [tf.gradients(self.act_op[:,u], self.obs_tensor)[0]
+                for u in range(self._dU)]
 
     def init_solver(self):
         """ Helper method to initialize the solver. """
@@ -199,6 +204,38 @@ class PolicyOptTf(PolicyOpt):
         pol_det_sigma = np.tile(np.prod(self.var), [N, T])
 
         return output, pol_sigma, pol_prec, pol_det_sigma
+
+    def linearize(self, obs):
+        """
+        Linearize policy about observations
+        Args:
+            obs: Numpy array of observations that is T x dO
+        """
+        T = obs.shape[0]
+
+        # Initialize
+        pol_K = np.empty((T, self._dU, self._dO))
+        pol_k = np.empty((T, self._dU))
+
+        # Perform scaling
+        x = obs.copy() # Store pre-scaled
+        if self.policy.scale is not None:
+            obs[:, self.x_idx] = \
+                    obs[:, self.x_idx].dot(self.policy.scale) + \
+                    self.policy.bias
+
+        # Compute linearization
+        # TODO: batch to speed up
+        for t in range(T):
+            feed_dict = {self.obs_tensor: obs[None, t, :]}
+            pol_k[t, :] = self.sess.run(self.act_op, feed_dict=feed_dict)[0]
+            for u in range(self._dU):
+                pol_K[t, u, :] = self.sess.run(self.grads[u], feed_dict=feed_dict)[0]
+            if self.policy.scale is not None:
+                pol_K[t, u, :] = pol_K[t, u, :].dot(self.policy.scale)
+            pol_k[t, :] -= pol_K[t, u, :].dot(obs[t])
+
+        return pol_K, pol_k
 
     def set_ent_reg(self, ent_reg):
         """ Set the entropy regularization. """

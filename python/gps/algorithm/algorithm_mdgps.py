@@ -13,6 +13,7 @@ from gps.sample.sample_list import SampleList
 
 LOGGER = logging.getLogger(__name__)
 
+from IPython.core.debugger import Tracer; debug_here = Tracer()
 
 class AlgorithmMDGPS(Algorithm):
     """
@@ -146,43 +147,59 @@ class AlgorithmMDGPS(Algorithm):
         N = len(samples)
         pol_info = self.cur[m].pol_info
         X = samples.get_X()
-        pol_mu, pol_sig = self.policy_opt.prob(samples.get_obs().copy())[:2]
+        obs = samples.get_obs().copy()
+        pol_mu, pol_sig = self.policy_opt.prob(obs)[:2]
         pol_info.pol_mu, pol_info.pol_sig = pol_mu, pol_sig
-        # Update policy prior.
-        if init:
-            self.cur[m].pol_info.policy_prior.update(
-                samples, self.policy_opt,
-                SampleList(self.cur[m].pol_info.policy_samples)
-            )
-        else:
-            self.cur[m].pol_info.policy_prior.update(
-                SampleList([]), self.policy_opt,
-                SampleList(self.cur[m].pol_info.policy_samples)
-            )
-        # Collapse policy covariances. This is not really correct, but
-        # it works fine so long as the policy covariance doesn't depend
-        # on state.
-        pol_sig = np.mean(pol_sig, axis=0)
-        # Estimate the policy linearization at each time step.
-        for t in range(T):
-            # Assemble diagonal weights matrix and data.
-            dwts = (1.0 / N) * np.ones(N)
-            Ts = X[:, t, :]
-            Ps = pol_mu[:, t, :]
-            Ys = np.concatenate((Ts, Ps), axis=1)
-            # Obtain Normal-inverse-Wishart prior.
-            mu0, Phi, mm, n0 = self.cur[m].pol_info.policy_prior.eval(Ts, Ps)
-            sig_reg = np.zeros((dX+dU, dX+dU))
-            # On the first time step, always slightly regularize covariance.
-            if t == 0:
-                sig_reg[:dX, :dX] = 1e-8 * np.eye(dX)
-            # Perform computation.
-            pol_K, pol_k, pol_S = gauss_fit_joint_prior(Ys, mu0, Phi, mm, n0,
-                                                        dwts, dX, dU, sig_reg)
-            pol_S += pol_sig[t, :, :]
-            pol_info.pol_K[t, :, :], pol_info.pol_k[t, :] = pol_K, pol_k
-            pol_info.pol_S[t, :, :], pol_info.chol_pol_S[t, :, :] = \
-                    pol_S, sp.linalg.cholesky(pol_S)
+
+        pol_S = np.mean(pol_sig, axis=0)
+        chol_pol_S = np.sqrt(pol_S)
+
+        pol_K = np.empty((N, T, dU, dX))
+        pol_k = np.empty((N, T, dU))
+        for n in range(N):
+            pol_K[n, :, :, :], pol_k[n, :, :] = self.policy_opt.linearize(obs[n])
+        pol_K = pol_K.mean(axis=0)
+        pol_k = pol_k.mean(axis=0)
+
+        # Store in pol_info
+        pol_info.pol_K, pol_info.pol_k = pol_K, pol_k
+        pol_info.pol_S, pol_info.chol_pol_S = pol_S, chol_pol_S
+
+#        # Update policy prior.
+#        if init:
+#            self.cur[m].pol_info.policy_prior.update(
+#                samples, self.policy_opt,
+#                SampleList(self.cur[m].pol_info.policy_samples)
+#            )
+#        else:
+#            self.cur[m].pol_info.policy_prior.update(
+#                SampleList([]), self.policy_opt,
+#                SampleList(self.cur[m].pol_info.policy_samples)
+#            )
+#        # Collapse policy covariances. This is not really correct, but
+#        # it works fine so long as the policy covariance doesn't depend
+#        # on state.
+#        pol_sig = np.mean(pol_sig, axis=0)
+#        # Estimate the policy linearization at each time step.
+#        for t in range(T):
+#            # Assemble diagonal weights matrix and data.
+#            dwts = (1.0 / N) * np.ones(N)
+#            Ts = X[:, t, :]
+#            Ps = pol_mu[:, t, :]
+#            Ys = np.concatenate((Ts, Ps), axis=1)
+#            # Obtain Normal-inverse-Wishart prior.
+#            mu0, Phi, mm, n0 = self.cur[m].pol_info.policy_prior.eval(Ts, Ps)
+#            sig_reg = np.zeros((dX+dU, dX+dU))
+#            # On the first time step, always slightly regularize covariance.
+#            if t == 0:
+#                sig_reg[:dX, :dX] = 1e-8 * np.eye(dX)
+#            # Perform computation.
+#            pol_K, pol_k, pol_S = gauss_fit_joint_prior(Ys, mu0, Phi, mm, n0,
+#                                                        dwts, dX, dU, sig_reg)
+#            pol_S += pol_sig[t, :, :]
+#            pol_info.pol_K[t, :, :], pol_info.pol_k[t, :] = pol_K, pol_k
+#            pol_info.pol_S[t, :, :], pol_info.chol_pol_S[t, :, :] = \
+#                    pol_S, sp.linalg.cholesky(pol_S)
 
     def _advance_iteration_variables(self):
         """
