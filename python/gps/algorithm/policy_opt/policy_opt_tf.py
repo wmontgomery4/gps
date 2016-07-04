@@ -224,16 +224,17 @@ class PolicyOptTf(PolicyOpt):
                     obs[:, self.x_idx].dot(self.policy.scale) + \
                     self.policy.bias
 
-        # Compute linearization
-        # TODO: batch to speed up
+        # Constant bias/gain matrices
+        feed_dict = {self.obs_tensor: obs}
+        pol_k = self.sess.run(self.act_op, feed_dict=feed_dict)
+        for u in range(self._dU):
+            pol_K[:, u, :] = self.sess.run(self.grads[u], feed_dict=feed_dict)
+
+        # Correct bias
         for t in range(T):
-            feed_dict = {self.obs_tensor: obs[None, t, :]}
-            pol_k[t, :] = self.sess.run(self.act_op, feed_dict=feed_dict)[0]
-            for u in range(self._dU):
-                pol_K[t, u, :] = self.sess.run(self.grads[u], feed_dict=feed_dict)[0]
             if self.policy.scale is not None:
                 pol_K[t, :, :] = pol_K[t, :, :].dot(self.policy.scale)
-            pol_k[t, :] -= pol_K[t, :, :].dot(obs[t])
+            pol_k[t, :] -= pol_K[t, :, :].dot(x[t])
 
         return pol_K, pol_k
 
