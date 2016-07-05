@@ -184,6 +184,18 @@ class AlgorithmMDGPS(Algorithm):
             pol_info.pol_S[t, :, :], pol_info.chol_pol_S[t, :, :] = \
                     pol_S, sp.linalg.cholesky(pol_S)
 
+        # Compute error terms for debugging
+        errs = np.empty(T)
+        for t in range(T):
+            pol_K = pol_info.pol_K[t, :, :]
+            pol_k = pol_info.pol_k[t, :]
+            err = 0
+            for n in range(N):
+                diff = pol_mu[n, t, :] - pol_K.dot(X[n, t, :]) - pol_k
+                err += np.sum(diff**2)
+            errs[t] = err / N
+        LOGGER.debug("Avg policy linearization error: %f" % np.mean(errs))
+
     def _advance_iteration_variables(self):
         """
         Move all 'cur' variables to 'prev', reinitialize 'cur'
