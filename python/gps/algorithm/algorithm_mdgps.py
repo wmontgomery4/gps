@@ -167,22 +167,16 @@ class AlgorithmMDGPS(Algorithm):
         pol_info.pol_S = np.mean(pol_sig, axis=0)
 
         # Add empirical covariances
-        errs = np.empty(T)
         for t in range(T):
+            pol_K = pol_info.pol_K[t, :, :]
+            pol_k = pol_info.pol_k[t, :]
             emp_cov = np.zeros((dU, dU))
-            err = 0
             for n in range(N):
-                lin_act = pol_K[n, t, :, :].dot(X[n, t, :]) + pol_k[n, t, :]
-                diff = lin_act - pol_mu[n, t, :]
+                diff = pol_mu[n, t, :] - pol_K.dot(X[n, t, :]) - pol_k
                 D = diff.dot(diff.T)
                 emp_cov += 0.5*(D + D.T)
-                err += np.sum(diff**2)
-            errs[t] = err / N
             pol_info.pol_S[t, :, :] += emp_cov / N
             pol_info.chol_pol_S[t, :, :] = sp.linalg.cholesky(pol_info.pol_S[t, :, :])
-
-        LOGGER.debug("Average policy linearization error: %f" % np.mean(errs))
-
 
 #        # Update policy prior.
 #        if init:
@@ -219,6 +213,19 @@ class AlgorithmMDGPS(Algorithm):
 #            pol_info.pol_K[t, :, :], pol_info.pol_k[t, :] = pol_K, pol_k
 #            pol_info.pol_S[t, :, :], pol_info.chol_pol_S[t, :, :] = \
 #                    pol_S, sp.linalg.cholesky(pol_S)
+
+        # Compute error terms
+        errs = np.empty(T)
+        for t in range(T):
+            pol_K = pol_info.pol_K[t, :, :]
+            pol_k = pol_info.pol_k[t, :]
+            err = 0
+            for n in range(N):
+                diff = pol_mu[n, t, :] - pol_K.dot(X[n, t, :]) - pol_k
+                err += np.sum(diff**2)
+            errs[t] = err / N
+
+        LOGGER.debug("Average policy linearization error: %f" % np.mean(errs))
 
     def _advance_iteration_variables(self):
         """

@@ -65,7 +65,7 @@ class PolicyOptTf(PolicyOpt):
         """ Helper method to initialize the tf networks used """
         tf_map_generator = self._hyperparams['network_model']
         tf_map = tf_map_generator(dim_input=self._dO, dim_output=self._dU, batch_size=self.batch_size,
-                                  network_config=self._hyperparams['network_params'])
+                                  network_config=self._hyperparams['network_arch_params'])
         self.obs_tensor = tf_map.get_input_tensor()
         self.action_tensor = tf_map.get_target_output_tensor()
         self.precision_tensor = tf_map.get_precision_tensor()
@@ -127,6 +127,9 @@ class PolicyOptTf(PolicyOpt):
 
         # Normalize obs, but only compute normalzation at the beginning.
         if self.policy.scale is None or self.policy.bias is None:
+#            self.policy.scale = np.eye(self._dO)
+#            self.policy.bias = np.zeros(self._dO)
+
             self.policy.x_idx = self.x_idx
             # 1e-3 to avoid infs if some state dimensions don't change in the
             # first batch of samples
