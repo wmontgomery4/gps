@@ -63,7 +63,7 @@ class TrajOptLQRPython(TrajOpt):
 
             # Main convergence check - constraint satisfaction.
             if (abs(kl_div - kl_step*T) < 0.1*kl_step*T or
-                    (itr >= 20 and kl_div < kl_step*T)):
+                    (itr >= 50 and kl_div < kl_step*T)):
                 LOGGER.debug("Iteration %i, KL: %f / %f converged",
                              itr, kl_div, kl_step * T)
                 eta = prev_eta  # TODO - Should this be here?
