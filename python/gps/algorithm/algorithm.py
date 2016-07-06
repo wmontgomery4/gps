@@ -101,6 +101,23 @@ class Algorithm(object):
                         Phi + (N*priorm) / (N+priorm) * \
                         np.outer(x0mu-mu0, x0mu-mu0) / (N+n0)
 
+            # Compute linearization error
+            X = cur_data.get_X()
+            U = cur_data.get_U()
+            T = X.shape[1] - 1
+            Fm = self.cur[cond].traj_info.dynamics.Fm
+            fv = self.cur[cond].traj_info.dynamics.fv
+            errs = np.empty(T)
+            for t in range(T):
+                err = 0
+                for n in range(N):
+                    xu = np.r_[ X[n, t, :], U[n, t, :] ]
+                    x = X[n, t+1, :]
+                    diff = x - Fm[t].dot(xu) - fv[t]
+                    err += np.sum(diff**2)
+                errs[t] = err / N
+            LOGGER.debug("Avg dynamics linearization error: %f" % np.mean(errs))
+
     def _update_trajectories(self):
         """
         Compute new linear Gaussian controllers.
