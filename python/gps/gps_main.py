@@ -301,6 +301,11 @@ def main():
         logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
     else:
         logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+    # Store debug output.
+    debug_txt = exp_dir + 'debug.txt'
+    fh = logging.FileHandler(debug_txt, 'w')
+    fh.setLevel(logging.DEBUG)
+    logging.getLogger().addHandler(fh)
 
     if args.new:
         from shutil import copy
