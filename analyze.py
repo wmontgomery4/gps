@@ -129,25 +129,25 @@ def plot_task(task, iters, fn):
         xs = np.arange(len(means)) + 1
         plt.errorbar(xs, means, stds, c=color, label=label)
 
-## Debug plot for peg4
-# peg4 (distance)
-task = 'peg4'
-iters = 12
-tgt = np.array([0, 0.3, -0.5])
-fn = lambda eepts: np.sqrt(np.sum((eepts[:, :, :3] - tgt)**2, axis=2))
-
-plt.title("Peg Insertion (4 conditions)")
-plot_task(task, iters, fn)
-xs = np.arange(iters) + 1
-ys = 0.1*np.ones(iters)
-plt.plot(xs, ys, 'k--')
-plt.legend()
-plt.xlabel('Iterations')
-plt.xlim((1, iters))
-plt.ylabel('Distance to Target')
-plt.ylim((0, 0.5))
-plt.savefig('experiments/peg4/distance.png')
-plt.clf()
+### Debug plot for peg4
+## peg4 (distance)
+#task = 'peg4'
+#iters = 12
+#tgt = np.array([0, 0.3, -0.5])
+#fn = lambda eepts: np.sqrt(np.sum((eepts[:, :, :3] - tgt)**2, axis=2))
+#
+#plt.title("Peg Insertion (4 conditions)")
+#plot_task(task, iters, fn)
+#xs = np.arange(iters) + 1
+#ys = 0.1*np.ones(iters)
+#plt.plot(xs, ys, 'k--')
+#plt.legend()
+#plt.xlabel('Iterations')
+#plt.xlim((1, iters))
+#plt.ylabel('Distance to Target')
+#plt.ylim((0, 0.5))
+#plt.savefig('experiments/peg4/distance.png')
+#plt.clf()
 
 ## Main plot
 plt.figure(figsize=(16, 4))
