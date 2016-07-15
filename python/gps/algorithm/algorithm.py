@@ -71,7 +71,7 @@ class Algorithm(object):
         """ Run iteration of the algorithm. """
         raise NotImplementedError("Must be implemented in subclass")
 
-    def _update_dynamics(self):
+    def _update_dynamics(self, mean_matching=False):
         """
         Instantiate dynamics objects and update prior. Fit dynamics to
         current samples.
@@ -83,8 +83,7 @@ class Algorithm(object):
             cur_data = self.cur[cond].sample_list
             self.cur[cond].traj_info.dynamics.update_prior(cur_data)
 
-            self.cur[cond].traj_info.dynamics.fit(cur_data)
-
+            # Set x0mu/sigma
             init_X = cur_data.get_X()[:, 0, :]
             x0mu = np.mean(init_X, axis=0)
             self.cur[cond].traj_info.x0mu = x0mu
@@ -100,6 +99,19 @@ class Algorithm(object):
                 self.cur[cond].traj_info.x0sigma += \
                         Phi + (N*priorm) / (N+priorm) * \
                         np.outer(x0mu-mu0, x0mu-mu0) / (N+n0)
+
+
+            # Fit dynamics (possibly using mean matching)
+            if mean_matching:
+                if self._hyperparams['sample_on_policy']:
+                    traj = self.cur[cond].pol_info.traj_distr()
+                else:
+                    traj = self.cur[cond].traj_distr
+                info = self.cur[cond].traj_info
+                self.cur[cond].traj_info.dynamics.fit(cur_data, traj, info)
+            else:
+                self.cur[cond].traj_info.dynamics.fit(cur_data)
+
 
             # Compute linearization error
             X = cur_data.get_X()

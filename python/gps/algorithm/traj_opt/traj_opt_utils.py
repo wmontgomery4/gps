@@ -9,7 +9,7 @@ import scipy as sp
 LOGGER = logging.getLogger(__name__)
 
 # Constants used in TrajOptLQR.
-DGD_MAX_ITER = 50
+DGD_MAX_ITER = 300
 THRESHA = 1e-4  # First convergence threshold.
 THRESHB = 1e-3  # Second convergence threshold.
 

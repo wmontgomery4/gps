@@ -44,24 +44,37 @@ class AlgorithmMDGPS(Algorithm):
         # Store the samples.
         for m in range(self.M):
             self.cur[m].sample_list = sample_lists[m]
-
-        self._update_dynamics()  # Update dynamics model using all sample.
+            self._eval_cost(m)
         self._update_policy_samples()  # Choose samples to use with the policy.
 
-        # On the first iteration we need to make sure that the policy somewhat
-        # matches the init controller. Otherwise the LQR backpass starts with
-        # a bad linearization, and things don't work out well.
+
+        # On first iteration:
+        # - Update dynamics fit with no mean matching
+        # - Catch policy up a little bit
+        # - Update the policy fit
         if self.iteration_count == 0:
+            self._update_dynamics()  # Update dynamics model using all sample.
             self.new_traj_distr = [
                 self.cur[cond].traj_distr for cond in range(self.M)
             ]
             self._update_policy()
+            for m in range(self.M):
+                self._update_policy_fit(m, init=True)
+        # On later iterations:
+        # - Update policy fit
+        # - Update dynamics fit with mean matching
+        # - Stepadjust
+        else:
+            for m in range(self.M):
+                self._update_policy_fit(m, init=True)
+            self._update_dynamics(mean_matching=True)
+#            self._update_dynamics()
+            for m in range(self.M):
+                self._stepadjust(m)
 
-        # Step adjustment
-        self._update_step_size()  # KL Divergence step size (also fits policy).
+        # Explicitly store the current pol_info, need for step size calc
         for m in range(self.M):
             pol_info = self.cur[m].pol_info
-            # Explicitly store the current pol_info, need for step size calc
             self.cur[m].init_pol_info = copy.deepcopy(pol_info)
 
         # C-step
@@ -93,16 +106,6 @@ class AlgorithmMDGPS(Algorithm):
         else:
             for m in range(self.M):
                 self.cur[m].pol_info.policy_samples = self.cur[m].sample_list
-
-    def _update_step_size(self):
-        """ Evaluate costs on samples, and adjust the step size. """
-        # Evaluate cost function for all conditions and samples.
-        for m in range(self.M):
-            self._update_policy_fit(m, init=True)
-            self._eval_cost(m)
-            # Adjust step size relative to the previous iteration.
-            if self.iteration_count > 0:
-                self._stepadjust(m)
 
     def _update_policy(self):
         """ Compute the new policy. """
