@@ -27,9 +27,16 @@ def pickle_final_eepts(task, expt, seed, itr):
     with open(fname, 'rb') as f:
         sample_lists = cPickle.load(f) # (num_samples, M)
 
+
     # magic final_eepts extraction (get first final_eepts position of eepts)
-    # NOTE: There's only one sample per sample_list, since it's policy samples
-    final_eepts = np.array([s[0]._data[3][-1] for s in sample_lists]) # (M, num_eepts)
+    if task == 'obstacle_course':
+        # Grab JOINT_ANGLES because END_EFFECTOR_POINTS gets NaNs
+        final_eepts = np.array([s[0]._data[1][-1] for s in sample_lists]) # (M, num_eepts)
+    else:
+        final_eepts = np.array([s[0]._data[3][-1] for s in sample_lists]) # (M, num_eepts)
+
+    if task == 'obstacle_course' and expt != 'badmm' and np.any(np.isnan(final_eepts)):
+        debug_here()
 
     # save final_eepts for faster replotting
     fname = "%s/final_eepts_itr_%02d.pkl" % (dirname, itr)
@@ -65,7 +72,6 @@ def get_final_eepts(task, expt, itr):
 
         pts = unpickle_final_eepts(task, expt, seed, itr)
         if np.isnan(pts).any() or np.isinf(pts).any():
-            #debug_here()
             print "Skipping, NaN/Inf, task %s, expt %s, seed %s, itr %s" % (task, expt, seed, itr)
             continue
         eepts.append(pts)
@@ -92,7 +98,7 @@ def write_success_pcts(task):
             f.write(line)
         f.write('\hline\n')
 
-write_success_pcts('peg4')
+#write_success_pcts('peg4')
 write_success_pcts('peg9')
 write_success_pcts('peg4_blind')
 
@@ -156,7 +162,8 @@ plt.figure(figsize=(16, 4))
 plt.subplot(131)
 task = 'obstacle_course'
 iters = 15
-tgt = np.array([3.0, 0.0, 0.0])
+tgt = np.array([3.0, 0.0])
+#tgt = np.array([3.0, 0.0, 0.0])
 fn = lambda eepts: np.sqrt(np.sum((eepts[:, :, :3] - tgt)**2, axis=2))
 
 plt.title("Obstacle Course")
