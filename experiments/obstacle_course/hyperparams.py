@@ -24,6 +24,8 @@ from gps.gui.config import generate_experiment_info
 SENSOR_DIMS = {
     JOINT_ANGLES: 2,
     JOINT_VELOCITIES: 2,
+    END_EFFECTOR_POINTS: 3,
+    END_EFFECTOR_POINT_VELOCITIES: 3,
     ACTION: 2,
 }
 
@@ -45,13 +47,15 @@ agent = {
     'conditions': common['conditions'],
     'T': 200,
     'sensor_dims': SENSOR_DIMS,
-    'state_include': [JOINT_ANGLES, JOINT_VELOCITIES],
-    'obs_include': [JOINT_ANGLES, JOINT_VELOCITIES],
+    'state_include': [JOINT_ANGLES, JOINT_VELOCITIES,
+            END_EFFECTOR_POINTS, END_EFFECTOR_POINT_VELOCITIES],
+    'obs_include': [JOINT_ANGLES, JOINT_VELOCITIES,
+            END_EFFECTOR_POINTS, END_EFFECTOR_POINT_VELOCITIES],
 }
 
 algorithm = {
     'conditions': common['conditions'],
-    'iterations': 15,
+    'iterations': 12,
     'kl_step': 1.0,
     'min_step_mult': 0.005,
     'max_step_mult': 3.0,
@@ -86,7 +90,7 @@ algorithm['dynamics'] = {
     'regularization': 1e-6,
     'prior': {
         'type': DynamicsPriorGMM,
-        'max_clusters': 5,
+        'max_clusters': 10,
         'min_samples_per_cluster': 40,
         'max_samples': 20,
     },
@@ -98,12 +102,12 @@ algorithm['traj_opt'] = {
 
 algorithm['policy_opt'] = {
     'type': PolicyOptCaffe,
-    'iterations': 4000,
+    'iterations': 3000,
 }
 
 algorithm['policy_prior'] = {
     'type': PolicyPriorGMM,
-    'max_clusters': 5,
+    'max_clusters': 10,
     'min_samples_per_cluster': 40,
     'max_samples': 20,
 }
