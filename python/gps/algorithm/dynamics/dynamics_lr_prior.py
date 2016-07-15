@@ -3,6 +3,7 @@ import numpy as np
 
 from gps.algorithm.dynamics.dynamics import Dynamics
 
+from IPython.core.debugger import Tracer; debug_here = Tracer()
 
 class DynamicsLRPrior(Dynamics):
     """ Dynamics with linear regression, with arbitrary prior. """
@@ -40,6 +41,7 @@ class DynamicsLRPrior(Dynamics):
         self.dyn_covar = np.zeros([T, dX, dX])
 
         ix = slice(dX)
+        iu = slice(dX,dX+dU)
         it = slice(dX+dU)
         ip = slice(dX+dU, dX+dU+dX)
 
@@ -55,6 +57,20 @@ class DynamicsLRPrior(Dynamics):
 
         # Fit dynamics with least squares regression.
         for t in range(T - 1):
+            # Evaluate prior.
+            xux = np.c_[X[:, t, :], U[:, t, :], X[:, t+1, :]]
+            mu0, Phi, m, n0 = self.prior.eval(dX, dU, xux)
+
+            # Linear regression with prior.
+            xux_mean = np.mean(xux, axis=0)
+            empsig = (xux - xux_mean).T.dot(xux - xux_mean) / N
+            empsig = 0.5 * (empsig + empsig.T)
+
+            sigma = (N * empsig + Phi + (N * m) / (N + m) *
+                     np.outer(xux_mean - mu0, xux_mean - mu0)) / (N + n0)
+            sigma = 0.5 * (sigma + sigma.T)
+            sigma[it, it] += self._hyperparams['regularization'] * np.eye(dX+dU)
+
             if traj_distr is not None:
                 # Take analytical state-action step (policy)
                 K, k = traj_distr.K[t, :, :], traj_distr.k[t, :]
@@ -71,28 +87,14 @@ class DynamicsLRPrior(Dynamics):
                 ])
                 xu_mu[t, :] = np.hstack([
                     xu_mu[t, ix],
-                    K.dot(xu_mu[t, ix]) + k
+                    xux_mean[iu]
+#                    K.dot(xu_mu[t, ix]) + k
                 ])
-
-            # Evaluate prior.
-            xux = np.c_[X[:, t, :], U[:, t, :], X[:, t+1, :]]
-            mu0, Phi, m, n0 = self.prior.eval(dX, dU, xux)
-
-            # Linear regression with prior.
-            xux_mean = np.mean(xux, axis=0)
-            empsig = (xux - xux_mean).T.dot(xux - xux_mean) / N
-            empsig = 0.5 * (empsig + empsig.T)
-
-            sigma = (N * empsig + Phi + (N * m) / (N + m) *
-                     np.outer(xux_mean - mu0, xux_mean - mu0)) / (N + n0)
-            sigma = 0.5 * (sigma + sigma.T)
-            sigma[it, it] += self._hyperparams['regularization'] * np.eye(dX+dU)
 
             # Condition on dynamics.
             Fm = np.linalg.pinv(sigma[it, it]).dot(sigma[it, ip]).T
-            # Dynamics with potential mean matching
-            if traj_distr is not None:
-                fv = xux_mean[ip] - Fm.dot(xu_mu[t])
+            if traj_distr is not None: # Empirical mean matching
+                fv = xux_mean[ip] - Fm.dot(xu_mu[t, it])
             else:
                 fv = xux_mean[ip] - Fm.dot(xux_mean[it])
 

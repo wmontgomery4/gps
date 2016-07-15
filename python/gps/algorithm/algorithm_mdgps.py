@@ -68,7 +68,6 @@ class AlgorithmMDGPS(Algorithm):
             for m in range(self.M):
                 self._update_policy_fit(m, init=True)
             self._update_dynamics(mean_matching=True)
-#            self._update_dynamics()
             for m in range(self.M):
                 self._stepadjust(m)
 

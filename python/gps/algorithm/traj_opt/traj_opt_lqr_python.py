@@ -16,6 +16,8 @@ from gps.algorithm.algorithm_mdgps import AlgorithmMDGPS
 
 LOGGER = logging.getLogger(__name__)
 
+from IPython.core.debugger import Tracer; debug_here = Tracer()
+
 
 class TrajOptLQRPython(TrajOpt):
     """ LQR trajectory optimization, Python implementation. """
@@ -92,7 +94,11 @@ class TrajOptLQRPython(TrajOpt):
                          itr, kl_div, kl_step * T, prev_eta, eta)
             prev_eta = eta
 
+#        if kl_div < kl_step*T*0.9:
+#            debug_here()
+
         if kl_div > kl_step*T and abs(kl_div - kl_step*T) > 0.1*kl_step*T:
+            debug_here()
             LOGGER.warning(
                 "Final KL divergence after DGD convergence is too high."
             )
@@ -288,6 +294,7 @@ class TrajOptLQRPython(TrajOpt):
                 LOGGER.debug('Increasing eta: %f -> %f', old_eta, eta)
                 del_ *= 2  # Increase del_ exponentially on failure.
                 if eta >= 1e16:
+                    debug_here()
                     if np.any(np.isnan(Fm)) or np.any(np.isnan(fv)):
                         raise ValueError('NaNs encountered in dynamics!')
                     raise ValueError('Failed to find PD solution even for very \
