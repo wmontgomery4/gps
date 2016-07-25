@@ -4,6 +4,8 @@ import os.path
 import numpy as np
 from gps.gui.config import generate_experiment_info
 from gps.algorithm.algorithm_badmm import AlgorithmBADMM
+from gps.algorithm.traj_opt.traj_opt_lqr_python import TrajOptLQRPython
+from gps.algorithm.policy_opt.policy_opt_caffe import PolicyOptCaffe
 
 BASE_DIR = '/'.join(str.split(__file__, '/')[:-3])
 default = imp.load_source('default_hyperparams', BASE_DIR+'/hyperparams.py')
@@ -33,14 +35,22 @@ algorithm.update({
     'fixed_lg_step': 3,
 })
 
-algorithm['policy_opt']['weights_file_prefix'] = EXP_DIR + 'policy'
+algorithm['traj_opt'] = {
+    'type': TrajOptLQRPython,
+}
+
+algorithm['policy_opt'] = {
+    'type': PolicyOptCaffe,
+    'weights_file_prefix': EXP_DIR + 'policy',
+    'iterations': 4000,
+}
 
 config = default.config.copy()
 config.update({
     'common': common,
     'algorithm': algorithm,
     'verbose_policy_trials': 1,
-    'random_seed': 1,
+    'seed': 1,
 })
 
 common['info'] = generate_experiment_info(config)

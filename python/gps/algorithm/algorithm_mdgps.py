@@ -85,10 +85,11 @@ class AlgorithmMDGPS(Algorithm):
         # S-step
         self._update_policy()
         for m in range(self.M):
-            self._update_policy_fit(m)  # Update policy priors.
-            # Save final kl for debugging / visualization.
-            kl_m = self._policy_kl(m)[0]
-            self.cur[m].pol_info.prev_kl = kl_m
+#            self._update_policy_fit(m)  # Update policy priors.
+#            # Save final kl for debugging / visualization.
+#            kl_m = self._policy_kl(m)[0]
+#            self.cur[m].pol_info.prev_kl = kl_m
+            self.cur[m].pol_info.prev_kl = self.cur[m].pol_info.init_kl
 
         self._advance_iteration_variables()
 

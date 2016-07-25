@@ -36,7 +36,7 @@ config.update({
     'common': common,
     'algorithm': algorithm,
     'verbose_policy_trials': 1,
-    'random_seed': 1,
+    'random_seed': 51,
 })
 
 common['info'] = generate_experiment_info(config)

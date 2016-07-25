@@ -12,7 +12,7 @@ from gps.sample.sample_list import SampleList
 
 expts = ['badmm', 'off_classic', 'off_global', 'on_classic', 'on_global']
 labels = ['BADMM (Off Policy)', 'Off Policy, Classic Step', 'Off Policy, Global Step', 'On Policy, Classic Step', 'On Policy, Global Step']
-seeds = [0, 1, 2]
+seeds = range(10)
 colors = ['k', 'r', 'm', 'b', 'g']
 
 SUCCESS_THRESHOLD = -0.5 + 0.06
@@ -61,8 +61,9 @@ def get_final_eepts(task, expt, itr):
         # skip if the seed hasn't been run
         pol_fname = "%s/pol_sample_itr_%02d.pkl" % (dirname, itr)
         if not os.path.exists(pol_fname):
+            debug_here()
             print "Skipping task %s, expt %s, seed %s, itr %s" % (task, expt, seed, itr)
-            continue
+#            continue
 
         # pickle if the seed hasn't been pickled
         pkl_fname = "%s/final_eepts_itr_%02d.pkl" % (dirname, itr)
@@ -72,8 +73,9 @@ def get_final_eepts(task, expt, itr):
 
         pts = unpickle_final_eepts(task, expt, seed, itr)
         if np.isnan(pts).any() or np.isinf(pts).any():
+            debug_here()
             print "Skipping, NaN/Inf, task %s, expt %s, seed %s, itr %s" % (task, expt, seed, itr)
-            continue
+#            continue
         eepts.append(pts)
 
     return np.array(eepts) # (num_seeds, M, num_eepts)
@@ -87,19 +89,23 @@ def write_success_pcts(task):
         f.write('\hline\n')
         f.write('Iteration & ' + ' & '.join(labels) + '\\\\\n')
         f.write('\hline\n')
-        for i in [3, 6, 9, 12]:
+        for i in [5, 10, 15]:
             line = "%d" % i
             for expt in expts:
                 eepts = get_final_eepts(task, expt, i-1)
                 zs = eepts[:, :, 2]
-                pct = 100*np.mean(zs < SUCCESS_THRESHOLD)
+                ss = zs < SUCCESS_THRESHOLD
+                ss = ss.mean(axis=1)
+                pct = 100*np.mean(ss)
+                std = 100*np.std(ss)
                 line += ("& %.2f" % pct) #+ "~\% "
+                line += ("+/- %.2f" % std)
             line += "\\\\ \n"
             f.write(line)
         f.write('\hline\n')
 
 #write_success_pcts('peg4')
-write_success_pcts('peg9')
+#write_success_pcts('peg9')
 write_success_pcts('peg4_blind')
 
 ####################
@@ -155,61 +161,27 @@ def plot_task(task, iters, fn):
 #plt.savefig('experiments/peg4/distance.png')
 #plt.clf()
 
-## Main plot
-plt.figure(figsize=(16, 4))
-
-# obstacle_course (distance)
-plt.subplot(131)
-task = 'obstacle_course'
-iters = 15
-tgt = np.array([3.0, 0.0])
-#tgt = np.array([3.0, 0.0, 0.0])
-fn = lambda eepts: np.sqrt(np.sum((eepts[:, :, :3] - tgt)**2, axis=2))
-
-plt.title("Obstacle Course")
-plot_task(task, iters, fn)
-xs = np.arange(iters) + 1
-plt.xlabel('Iterations')
-plt.xlim((1, iters))
-plt.ylabel('Distance to Target')
-plt.ylim((0, 4.0))
-
-# peg9 (distance)
-plt.subplot(132)
-task = 'peg9'
-iters = 12
-tgt = np.array([0, 0.3, -0.5])
-fn = lambda eepts: np.sqrt(np.sum((eepts[:, :, :3] - tgt)**2, axis=2))
-
-plt.title("Peg Insertion")
-plot_task(task, iters, fn)
-xs = np.arange(iters) + 1
-ys = 0.1*np.ones(iters)
-plt.plot(xs, ys, 'k--')
-plt.xlabel('Iterations')
-plt.xlim((1, iters))
-plt.ylabel('Distance to Target')
-plt.ylim((0, 0.5))
-plt.legend()
-
-# peg4_blind (distance)
-plt.subplot(133)
-task = 'peg4_blind'
-iters = 12
-tgt = np.array([0, 0.3, -0.5])
-fn = lambda eepts: np.sqrt(np.sum((eepts[:, :, :3] - tgt)**2, axis=2))
-
-plt.title("Blind Peg Insertion")
-plot_task(task, iters, fn)
-xs = np.arange(iters) + 1
-ys = 0.1*np.ones(iters)
-plt.plot(xs, ys, 'k--')
-plt.xlabel('Iterations')
-plt.xlim((1, iters))
-plt.ylabel('Distance to Target')
-plt.ylim((0, 0.5))
-
-# Save it
-plt.tight_layout()
-plt.savefig('experiments/results.png')
-plt.clf()
+### Main plot
+#plt.figure(figsize=(6, 4))
+#
+## peg4_blind (distance)
+#task = 'peg4_blind'
+#iters = 15
+#tgt = np.array([0, 0.3, -0.5])
+#fn = lambda eepts: np.sqrt(np.sum((eepts[:, :, :3] - tgt)**2, axis=2))
+#
+#plt.title("Blind Peg Insertion")
+#plot_task(task, iters, fn)
+#xs = np.arange(iters) + 1
+#ys = 0.1*np.ones(iters)
+#plt.plot(xs, ys, 'k--')
+#plt.xlabel('Iterations')
+#plt.xlim((1, iters))
+#plt.ylabel('Distance to Target')
+#plt.ylim((0, 0.5))
+#plt.legend()
+#
+## Save it
+#plt.tight_layout()
+#plt.savefig('experiments/results.png')
+#plt.clf()
