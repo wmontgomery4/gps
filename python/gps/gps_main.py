@@ -12,6 +12,7 @@ import copy
 import argparse
 import threading
 import time
+import numpy as np
 
 # Add gps/python to path so that imports work.
 sys.path.append('/'.join(str.split(__file__, '/')[:-2]))
@@ -19,6 +20,7 @@ from gps.gui.gps_training_gui import GPSTrainingGUI
 from gps.utility.data_logger import DataLogger
 from gps.sample.sample_list import SampleList
 
+LOGGER = logging.getLogger(__name__)
 
 class GPSMain(object):
     """ Main class to run algorithms and experiments. """
@@ -249,20 +251,33 @@ class GPSMain(object):
             self.gui.save_figure(
                 self._data_files_dir + ('figure_itr_%02d.png' % itr)
             )
+
         if 'no_sample_logging' in self._hyperparams['common']:
             return
+#        self.data_logger.pickle(
+#            self._data_files_dir + ('algorithm_itr_%02d.pkl' % itr),
+#            copy.copy(self.algorithm)
+#        )
+#        self.data_logger.pickle(
+#            self._data_files_dir + ('traj_sample_itr_%02d.pkl' % itr),
+#            copy.copy(traj_sample_lists)
+#        )
+#        if pol_sample_lists:
+#            self.data_logger.pickle(
+#                self._data_files_dir + ('pol_sample_itr_%02d.pkl' % itr),
+#                copy.copy(pol_sample_lists)
+#            )
+        LOGGER.debug("Pickling eepts.")
+        eepts = np.array([s[0]._data[3] for s in traj_sample_lists])
         self.data_logger.pickle(
-            self._data_files_dir + ('algorithm_itr_%02d.pkl' % itr),
-            copy.copy(self.algorithm)
-        )
-        self.data_logger.pickle(
-            self._data_files_dir + ('traj_sample_itr_%02d.pkl' % itr),
-            copy.copy(traj_sample_lists)
+            self._data_files_dir + ('train_eepts_%02d.pkl' % itr),
+            eepts
         )
         if pol_sample_lists:
+            eepts = np.array([s[0]._data[3] for s in pol_sample_lists])
             self.data_logger.pickle(
-                self._data_files_dir + ('pol_sample_itr_%02d.pkl' % itr),
-                copy.copy(pol_sample_lists)
+                self._data_files_dir + ('test_eepts_%02d.pkl' % itr),
+                eepts
             )
 
     def _end(self):
@@ -291,6 +306,7 @@ def main():
                         help='silent debug print outs')
     parser.add_argument('-q', '--quit', action='store_true',
                         help='quit GUI automatically when finished')
+
     args = parser.parse_args()
 
     exp_name = args.experiment
@@ -387,23 +403,50 @@ def main():
         import random
         import numpy as np
         import matplotlib.pyplot as plt
+        import copy
 
         seed = hyperparams.config.get('random_seed', 0)
-        random.seed(seed)
-        np.random.seed(seed)
 
-        gps = GPSMain(hyperparams.config, args.quit)
-        if hyperparams.config['gui_on']:
-            run_gps = threading.Thread(
-                target=lambda: gps.run(itr_load=resume_training_itr)
-            )
-            run_gps.daemon = True
-            run_gps.start()
+        if isinstance(seed, list):
+            for s in seed:
+                # Update directories.
+                config = copy.deepcopy(hyperparams.config)
 
-            plt.ioff()
-            plt.show()
+                exp_dir = config['common']['experiment_dir']
+                exp_dir += '%d/' % s
+                config['common']['experiment_dir'] = exp_dir
+                config['common']['data_files_dir'] = exp_dir + 'data_files/'
+                config['common']['target_filename'] = exp_dir + 'target.npz'
+                config['common']['log_filename'] = exp_dir + 'log.txt'
+
+                if not os.path.exists(config['common']['data_files_dir']):
+                    os.makedirs(config['common']['data_files_dir'])
+
+                alg = config['algorithm']
+                if 'policy_opt' in alg:
+                    alg['policy_opt']['weights_file_prefix'] = exp_dir + 'policy'
+
+                # Run with current seed.
+                random.seed(s)
+                np.random.seed(s)
+                gps = GPSMain(config, False)
+                gps.run()
         else:
-            gps.run(itr_load=resume_training_itr)
+            random.seed(seed)
+            np.random.seed(seed)
+
+            gps = GPSMain(hyperparams.config, args.quit)
+            if hyperparams.config['gui_on']:
+                run_gps = threading.Thread(
+                    target=lambda: gps.run(itr_load=resume_training_itr)
+                )
+                run_gps.daemon = True
+                run_gps.start()
+
+                plt.ioff()
+                plt.show()
+            else:
+                gps.run(itr_load=resume_training_itr)
 
 
 if __name__ == "__main__":

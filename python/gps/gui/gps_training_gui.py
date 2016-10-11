@@ -275,9 +275,9 @@ class GPSTrainingGUI(object):
         costs = [np.mean(np.sum(algorithm.prev[m].cs, axis=1)) for m in range(algorithm.M)]
         self._update_iteration_data(itr, algorithm, costs, pol_sample_lists)
         self._cost_plotter.update(costs, t=itr)
-        if END_EFFECTOR_POINTS in agent.x_data_types:
-            self._update_trajectory_visualizations(algorithm, agent,
-                    traj_sample_lists, pol_sample_lists)
+#        if END_EFFECTOR_POINTS in agent.x_data_types:
+#            self._update_trajectory_visualizations(algorithm, agent,
+#                    traj_sample_lists, pol_sample_lists)
 
         self._fig.canvas.draw()
         self._fig.canvas.flush_events() # Fixes bug in Qt4Agg backend
