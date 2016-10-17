@@ -63,7 +63,7 @@ algorithm = {
     'conditions': common['conditions'],
     'iterations': 12,
     'kl_step': 1.0,
-    'min_step_mult': 0.05,
+    'min_step_mult': 0.01,
     'max_step_mult': 3.0,
     'policy_sample_mode': 'replace',
 }
@@ -119,7 +119,7 @@ algorithm['dynamics'] = {
         'type': DynamicsPriorGMM,
         'max_clusters': 20,
         'min_samples_per_cluster': 40,
-        'max_samples': 5,
+        'max_samples': 15,
     },
 }
 
