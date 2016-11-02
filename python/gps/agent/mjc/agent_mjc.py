@@ -138,9 +138,9 @@ class AgentMuJoCo(Agent):
             obs_t = new_sample.get_obs(t=t)
             mj_U = policy.act(X_t, obs_t, t, noise[t, :])
             U[t, :] = mj_U
-            if verbose:
-                self._world[condition].plot(mj_X)
             if (t + 1) < self.T:
+                if verbose:
+                    self._world[condition].plot(mj_X)
                 for _ in range(self._hyperparams['substeps']):
                     mj_X, _ = self._world[condition].step(mj_X, mj_U)
                 #TODO: Some hidden state stuff will go here.

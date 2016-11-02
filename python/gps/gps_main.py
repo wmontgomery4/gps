@@ -1,7 +1,7 @@
 """ This file defines the main object that runs experiments. """
 
 import matplotlib as mpl
-mpl.use('Qt4Agg')
+mpl.use('Qt5Agg')
 
 import logging
 import imp
@@ -251,19 +251,23 @@ class GPSMain(object):
             )
         if 'no_sample_logging' in self._hyperparams['common']:
             return
+#        self.data_logger.pickle(
+#            self._data_files_dir + ('algorithm_itr_%02d.pkl' % itr),
+#            copy.copy(self.algorithm)
+#        )
+#        self.data_logger.pickle(
+#            self._data_files_dir + ('traj_sample_itr_%02d.pkl' % itr),
+#            copy.copy(traj_sample_lists)
+#        )
+#        if pol_sample_lists:
+#            self.data_logger.pickle(
+#                self._data_files_dir + ('pol_sample_itr_%02d.pkl' % itr),
+#                copy.copy(pol_sample_lists)
+#            )
         self.data_logger.pickle(
-            self._data_files_dir + ('algorithm_itr_%02d.pkl' % itr),
-            copy.copy(self.algorithm)
+            self._data_files_dir + ('data_itr_%02d.pkl' % itr),
+            copy.copy(self.algorithm.prev)
         )
-        self.data_logger.pickle(
-            self._data_files_dir + ('traj_sample_itr_%02d.pkl' % itr),
-            copy.copy(traj_sample_lists)
-        )
-        if pol_sample_lists:
-            self.data_logger.pickle(
-                self._data_files_dir + ('pol_sample_itr_%02d.pkl' % itr),
-                copy.copy(pol_sample_lists)
-            )
 
     def _end(self):
         """ Finish running and exit. """
