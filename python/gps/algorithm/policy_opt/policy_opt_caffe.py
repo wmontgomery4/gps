@@ -114,15 +114,15 @@ class PolicyOptCaffe(PolicyOpt):
         # Save original tgt_prc.
         tgt_prc_orig = np.reshape(tgt_prc, [N*T, dU, dU])
 
-        # Renormalize weights.
-        tgt_wt *= (float(N * T) / np.sum(tgt_wt))
-        # Allow weights to be at most twice the robust median.
-        mn = np.median(tgt_wt[(tgt_wt > 1e-2).nonzero()])
-        for n in range(N):
-            for t in range(T):
-                tgt_wt[n, t] = min(tgt_wt[n, t], 2 * mn)
-        # Robust median should be around one.
-        tgt_wt /= mn
+#        # Renormalize weights.
+#        tgt_wt *= (float(N * T) / np.sum(tgt_wt))
+#        # Allow weights to be at most twice the robust median.
+#        mn = np.median(tgt_wt[(tgt_wt > 1e-2).nonzero()])
+#        for n in range(N):
+#            for t in range(T):
+#                tgt_wt[n, t] = min(tgt_wt[n, t], 2 * mn)
+#        # Robust median should be around one.
+#        tgt_wt /= mn
 
         # Reshape inputs.
         obs = np.reshape(obs, (N*T, dO))

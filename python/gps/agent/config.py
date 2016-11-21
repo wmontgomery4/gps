@@ -18,6 +18,10 @@ AGENT = {
     'smooth_noise': True,
     'smooth_noise_var': 2.0,
     'smooth_noise_renormalize': True,
+    'save_sampled_bodypos': False,
+    'randomly_sample_x0': False,
+    'randomly_sample_bodypos': False,
+    'record_reward': False,
 }
 
 
@@ -70,12 +74,10 @@ AGENT_MUJOCO = {
     'image_height': 480,
     'image_channels': 3,
     'meta_include': [],
-    'randomly_sample_x0': False,
-    'prohibited_ranges_x0': [],
-    'randomly_sample_bodypos': False,
-    'prohibited_ranges_bodypos': [],
 }
 
 AGENT_BOX2D = {
     'render': True,
 }
+
+AGENT_OPENAI = {}

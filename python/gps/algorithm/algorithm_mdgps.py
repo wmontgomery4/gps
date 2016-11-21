@@ -13,6 +13,8 @@ from sklearn.cluster import KMeans
 
 LOGGER = logging.getLogger(__name__)
 
+RWR_ITERS = 2
+ALPHA = 1e-1
 
 class AlgorithmMDGPS(Algorithm):
     """
@@ -55,36 +57,52 @@ class AlgorithmMDGPS(Algorithm):
         for m in range(self.M):
             self.cur[m].sample_list = sample_lists[m]
 
-        # On the first iteration, need to train on init_traj_distr.
-        if self.iteration_count == 0:
-            self.new_traj_distr = [self.cur[m].traj_distr \
-                    for m in range(self.M)]
-            self._update_policy()
-
-        # If clustering, set self.cluster_idx.
-        if self._hyperparams['num_clusters']:
-            self._cluster_samples()
-
-        # Update dynamics/policy linearizations.
-        # NOTE: Skip for 'traj_em', since fits while clustering.
-        if self._hyperparams['cluster_method'] != 'traj_em':
-            self._update_dynamics()
-            self._update_policy_fit()
-
         # Update quadratic cost expansions for all conditions.
         for m in range(self.M):
             self._eval_cost(m)
 
-        # C-step
-        if self.iteration_count > 0:
-            self._stepadjust()
-        self._update_trajectories()
+        if self.iteration_count < RWR_ITERS:
+            # SUPER HACK to make up for C-step.
+            self.new_traj_distr = [self.cur[m].traj_distr \
+                    for m in range(self.M)]
+        else:
+            if self.iteration_count == 0:
+                self._init_train()
 
-        # S-step
+            # If clustering, set self.cluster_idx.
+            if self._hyperparams['num_clusters']:
+                self._cluster_samples()
+
+            # Update dynamics/policy linearizations.
+            # NOTE: Skip for 'traj_em', since fits while clustering.
+            if self._hyperparams['cluster_method'] != 'traj_em':
+                self._update_dynamics()
+                self._update_policy_fit()
+
+            if self.iteration_count > RWR_ITERS:
+                self._stepadjust()
+
+            # C-step.
+            self._update_trajectories()
+
+        # S-step.
         self._update_policy()
 
-        # Prepare for next iteration
+        # Prepare for next iteration.
         self._advance_iteration_variables()
+
+    def _init_train(self):
+        """
+        On first iteration, train the policy to match init_traj_distr.
+        """
+        if self._hyperparams['num_clusters']:
+            method = self._hyperparams['cluster_method']
+            # We can't use 'traj_em' yet, don't yet have pol_info.
+            method = 'kmeans' if method == 'traj_em' else method
+            self._cluster_samples(method)
+        # Update dynamics initially and compute policy.
+        self.new_traj_distr = [self.cur[m].traj_distr for m in range(self.M)]
+        self._update_policy()
 
     def _update_policy(self):
         """ Compute the new policy. """
@@ -99,25 +117,62 @@ class AlgorithmMDGPS(Algorithm):
             traj, pol_info = self.new_traj_distr[m], self.cur[m].pol_info
             mu = np.zeros((N, T, dU))
             prc = np.zeros((N, T, dU, dU))
-            wt = np.zeros((N, T))
+            wt = np.ones((N, T))
+
             # Get time-indexed actions.
-            for t in range(T):
-                # Compute actions along this trajectory.
-                prc[:, t, :, :] = np.tile(traj.inv_pol_covar[t, :, :],
-                                          [N, 1, 1])
-                for i in range(N):
-                    mu[i, t, :] = (traj.K[t, :, :].dot(X[i, t, :]) + traj.k[t, :])
-                wt[:, t].fill(pol_info.pol_wt[t])
+            if self.iteration_count < RWR_ITERS:
+                # Fit to samples.
+                mu = samples.get_U()
+                prc = np.tile(np.diag(1/self.policy_opt.var), [N, T, 1, 1])
+            else:
+                # Fit to updates.
+                traj = self.new_traj_distr[m]
+
+                for t in range(T):
+                    # Compute actions along this trajectory.
+                    prc[:, t, :, :] = np.tile(traj.inv_pol_covar[t, :, :],
+                                              [N, 1, 1])
+                    for i in range(N):
+                        mu[i, t, :] = (traj.K[t, :, :].dot(X[i, t, :]) + traj.k[t, :])
+
             tgt_mu = np.concatenate((tgt_mu, mu))
             tgt_prc = np.concatenate((tgt_prc, prc))
             tgt_wt = np.concatenate((tgt_wt, wt))
             obs_data = np.concatenate((obs_data, samples.get_obs()))
-        if 'fc_only_iterations' in self.policy_opt._hyperparams:
-            self.policy_opt.update(obs_data, tgt_mu, tgt_prc, tgt_wt, self.iteration_count)
-        else:
-            self.policy_opt.update(obs_data, tgt_mu, tgt_prc, tgt_wt)
 
-    def _update_policy_fit(self, update_prior=True):
+        # RWR.
+        if self.iteration_count < RWR_ITERS:
+            for m in range(self.M):
+                tgt_wt[m, :] = self.cur[m].cs.sum()
+
+            LOGGER.debug("cs.min(): %f", tgt_wt.min())
+            LOGGER.debug("cs.max(): %f", tgt_wt.max())
+            LOGGER.debug("cs.mean(): %f", tgt_wt.mean())
+            LOGGER.debug("cs.median(): %f", np.median(tgt_wt))
+
+            # Softmax weighting with temperature alpha.
+            tgt_wt[:, :] = np.exp(-ALPHA*tgt_wt) # (N, T)
+
+            # Only use samples above the median.
+            #cost = tgt_wt[:, 0]
+            #medn = np.median(cost)
+            #idxs = tgt_wt < medn
+            #tgt_wt[idxs] = 1.0
+            #tgt_wt[~idxs] = 0.0
+
+            # Only use top two samples.
+            #idxs = np.argsort(cost)[:2]
+            #tgt_wt[:] = 0.0
+            #tgt_wt[idxs] = 1.0
+
+            LOGGER.debug("tgt_wt.min(): %f", tgt_wt.min())
+            LOGGER.debug("tgt_wt.max(): %f", tgt_wt.max())
+            LOGGER.debug("tgt_wt.mean(): %f", tgt_wt.mean())
+            LOGGER.debug("tgt_wt.median(): %f", np.median(tgt_wt))
+
+        self.policy_opt.update(obs_data, tgt_mu, tgt_prc, tgt_wt)
+
+    def _update_policy_fit(self):
         """
         Update dynamics linearizations (dispatch for conditions/clusters).
         """
